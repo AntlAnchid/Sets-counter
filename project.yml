@@ -1,0 +1,42 @@
+name: Sets
+options:
+  bundleIdPrefix: com.yourname
+  deploymentTarget:
+    iOS: "18.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Sets:
+    type: application
+    platform: iOS
+    sources: [Sets, Shared]
+    dependencies:
+      - target: SetsWidgets
+        embed: true
+    info:
+      path: Sets/Info.plist
+      properties:
+        CFBundleDisplayName: Підходи
+        UILaunchScreen: {}
+        NSSupportsLiveActivities: true
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourname.sets
+  SetsWidgets:
+    type: app-extension
+    platform: iOS
+    sources: [SetsWidgets, Shared]
+    info:
+      path: SetsWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Підходи
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourname.sets.widgets
