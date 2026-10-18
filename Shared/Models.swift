@@ -5,7 +5,9 @@ import ActivityKit
 
 enum W {
     static func value(_ s: String) -> Double? {
-        Double(s.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces))
+        var t = s.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces)
+        if t.hasSuffix(".") { t.removeLast() }   // "50." → 50
+        return Double(t)
     }
     static func format(_ v: Double) -> String {
         v == v.rounded() ? String(Int(v)) : String(format: "%g", v)
@@ -13,26 +15,22 @@ enum W {
     static func label(_ s: String) -> String {
         let t = s.trimmingCharacters(in: .whitespaces)
         if t.isEmpty { return "" }
-        return value(t) != nil ? "\(t) кг" : t
+        if let v = value(t) { return v == 0 ? "власна вага" : "\(format(v)) кг" }
+        return t
     }
     static func adjust(_ s: String, by d: Double) -> String {
         format(max(0, (value(s) ?? 0) + d))
     }
 
-    /// Крок зміни ваги залежно від поточної ваги: ≥40 → 5, 15–39 → 2.5, <15 → 1.
-    static func step(for w: Double) -> Double { w >= 40 ? 5 : (w >= 15 ? 2.5 : 1) }
-
-    /// Один крок вгору (direction > 0) або вниз. На межі діапазонів округлюється до сітки нового кроку.
-    static func stepped(_ s: String, direction: Int) -> String {
-        let w = value(s) ?? 0
-        let dir = direction > 0 ? 1.0 : -1.0
-        var n = w + dir * step(for: w)
-        let ns = step(for: n)
-        if ns != step(for: w) {
-            n = dir > 0 ? (n / ns).rounded(.up) * ns : (n / ns).rounded(.down) * ns
-        }
-        return format(max(0, n))
+    /// Крок береться із запису ваги в РОЗКЛАДІ: є крапка ("7.5", "50.", "0.") → 2.5, інакше ("50", "0") → 2.
+    static func stepRule(_ schedule: String) -> Double {
+        schedule.replacingOccurrences(of: ",", with: ".").contains(".") ? 2.5 : 2
     }
+
+    static func stepped(_ s: String, direction: Int, step: Double) -> String {
+        format(max(0, (value(s) ?? 0) + (direction > 0 ? step : -step)))
+    }
+
     static func plural(_ n: Int) -> String {
         let m10 = n % 10, m100 = n % 100
         return (1...4).contains(m10) && !(11...14).contains(m100) ? "повторення" : "повторень"

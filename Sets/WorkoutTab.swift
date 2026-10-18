@@ -19,7 +19,7 @@ struct WorkoutTab: View {
                             .frame(minHeight: 240)
                             .font(.system(.body, design: .monospaced))
                             .autocorrectionDisabled()
-                        Text("# Будь-яка назва тренування, далі рядки:\nВправа | вага | підходи | повтори (10 або 8-12)")
+                        Text("# Будь-яка назва тренування, далі рядки:\nВправа | вага | підходи | повтори (10 або 8-12)\nВага 50 → крок в острові 2 кг; 50. або 7.5 → 2.5 кг; 0 = власна вага (0. → крок 2.5)")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }

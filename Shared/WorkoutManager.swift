@@ -179,7 +179,7 @@ final class WorkoutManager: ObservableObject {
         guard var s = session else { return }
         let ex = s.current
         if s.weightMode {
-            s.weights[ex.name] = W.stepped(s.weights[ex.name] ?? ex.weight, direction: delta)
+            s.weights[ex.name] = W.stepped(s.weights[ex.name] ?? ex.weight, direction: delta, step: W.stepRule(ex.weight))
         } else {
             guard s.hasPending(ex) else { return }
             s.reps = max(0, min(300, s.reps + delta))
@@ -304,20 +304,35 @@ final class WorkoutManager: ObservableObject {
         guard let last = lastResult(for: name) else {
             return "Вправу завершено ✓\nПерший запис — є з чим порівнювати"
         }
-        let wToday = today.compactMap { W.value($0.weight) }.max()
-        let wLast = last.sets.compactMap { W.value($0.weight) }.max()
-        let diff = today.reduce(0) { $0 + $1.reps } - last.sets.reduce(0) { $0 + $1.reps }
-        if let a = wToday, let b = wLast, a > b {
-            var sub = "робоча вага зросла"
-            if diff > 0 { sub += " · +\(diff) \(W.plural(diff))" }
-            return "+\(W.format(a - b)) кг\n\(sub)"
+        func weight(_ l: LoggedSet) -> Double { W.value(l.weight) ?? 0 }          // 0 = власна вага
+        func e1rm(_ l: LoggedSet) -> Double { weight(l) * (1 + Double(l.reps) / 30) } // Epley
+        func one(_ v: Double) -> String { W.format((v * 10).rounded() / 10) }
+
+        let wToday = today.map(weight).max() ?? 0
+        let wLast = last.sets.map(weight).max() ?? 0
+        let repsDiff = today.reduce(0) { $0 + $1.reps } - last.sets.reduce(0) { $0 + $1.reps }
+
+        // 1) вага не змінювалась → рахуємо сумарні повторення
+        if abs(wToday - wLast) < 0.001 {
+            if repsDiff > 0 { return "+\(repsDiff) \(W.plural(repsDiff))\nу сумі більше, ніж минулого разу" }
+            if repsDiff == 0 { return "Стабільно 💪\nстільки ж, як минулого разу" }
+            return "Вправу завершено ✓\nминулого разу було на \(-repsDiff) \(W.plural(-repsDiff)) більше"
         }
-        if let a = wToday, let b = wLast, a < b {
-            return "Вправу завершено ✓\nминулого разу вага була \(W.format(b)) кг"
+        // власна вага ↔ додаткова вага: e1RM тут не має сенсу
+        if wLast == 0 { return "+\(one(wToday)) кг\nдодаткова вага порівняно з минулим разом" }
+        if wToday == 0 { return "Вправу завершено ✓\nминулого разу була додаткова вага \(one(wLast)) кг" }
+
+        // 2) вага змінилась → порівнюємо сумарний e1RM (сума e1RM усіх підходів)
+        let eToday = today.map(e1rm).reduce(0, +)
+        let eLast = last.sets.map(e1rm).reduce(0, +)
+        let delta = ((eToday - eLast) * 10).rounded() / 10
+        if delta > 0 {
+            return "Новий рекорд! 🏆\n+\(one(delta)) кг до сумарного розрахункового максимуму (\(one(eToday)) кг)"
         }
-        if diff > 0 { return "+\(diff) \(W.plural(diff))\nу сумі більше, ніж минулого разу" }
-        if diff == 0 { return "Стабільно 💪\nстільки ж, як минулого разу" }
-        return "Вправу завершено ✓\nминулого разу було на \(-diff) \(W.plural(-diff)) більше"
+        if delta < 0 {
+            return "Вправу завершено ✓\nсумарний розрахунковий максимум на \(one(-delta)) кг нижчий за минулий"
+        }
+        return "Стабільно 💪\nсумарний розрахунковий максимум той самий: \(one(eToday)) кг"
     }
 
     private func showCelebration(_ text: String, base s: Session) async {
